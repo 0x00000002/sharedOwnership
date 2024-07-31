@@ -55,7 +55,9 @@ contract HorseToken is ERC721, AccessManaged {
         bytes32 dam;
     }
 
-    mapping(bytes32 tokenId => Horse) public horses;
+    uint256 private _tokenId;
+
+    mapping(uint256 tokenId => Horse) public horses;
 
     event Minted(address indexed receiver, uint256 tokenId);
     event Burned(uint256 tokenId);
@@ -72,19 +74,13 @@ contract HorseToken is ERC721, AccessManaged {
         address receiver,
         Horse calldata horse
     ) public payable restricted {
-        bytes32 tokenId = keccak256(
-            abi.encodePacked(
-                horse.name,
-                horse.horseType,
-                horse.color,
-                horse.dob,
-                horse.isStallion,
-                horse.sire,
-                horse.dam
-            )
-        );
-        _mint(receiver, uint256(tokenId));
-        emit Minted(receiver, uint256(tokenId));
+        _mint(receiver, _tokenId);
+        horses[_tokenId] = horse;
+        emit Minted(receiver, _tokenId++);
+    }
+
+    function update(uint256 tokenId, Horse calldata horse) external restricted {
+        horses[tokenId] = horse;
     }
 
     /**

@@ -32,10 +32,10 @@ contract PaymentSystem is AccessManaged, ReentrancyGuard {
     uint256 private _syndicateRegistrationFee;
     uint256 public totalFees;
 
-    mapping(bytes32 syndicateId => uint256 priceForOne) public shareCost;
-    mapping(bytes32 syndicateId => uint256 currentlyIssuedShares)
+    mapping(uint256 syndicateId => uint256 priceForOne) public shareCost;
+    mapping(uint256 syndicateId => uint256 currentlyIssuedShares)
         public sharesIssued;
-    mapping(bytes32 syndicateId => uint256 balance) public syndicateBalance;
+    mapping(uint256 syndicateId => uint256 balance) public syndicateBalance;
 
     mapping(uint256 paymentId => Payment) public payments;
 
@@ -44,7 +44,7 @@ contract PaymentSystem is AccessManaged, ReentrancyGuard {
 
     constructor(address manager) AccessManaged(manager) {}
 
-    function paySyndicateRegistrationFee(bytes32 syndicateId) external payable {
+    function paySyndicateRegistrationFee() external payable {
         uint256 value = msg.value;
         require(
             value >= _syndicateRegistrationFee,
@@ -54,7 +54,7 @@ contract PaymentSystem is AccessManaged, ReentrancyGuard {
     }
 
     function paySharesNativeCurrency(
-        bytes32 syndicateId,
+        uint256 syndicateId,
         uint256 amount
     ) external payable {
         uint256 value = msg.value;

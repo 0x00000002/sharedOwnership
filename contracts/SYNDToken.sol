@@ -22,28 +22,15 @@ contract SYNDToken is ERC1155, AccessManaged {
     /**
      * @notice mint() function
      * @param receiver - address of the wallet to receive new token
-     * @param horse - Horse struct
+     * @param amount - amount of tokens to mint
      */
 
     function mint(
         address receiver,
-        uint256 amount,
-        HorseToken.Horse calldata horse
+        uint256 syndicateId,
+        uint256 amount
     ) public payable onlyManager returns (uint256 tokenId) {
-        tokenId = uint256(
-            keccak256(
-                abi.encodePacked(
-                    horse.name,
-                    horse.horseType,
-                    horse.color,
-                    horse.dob,
-                    horse.isStallion,
-                    horse.sire,
-                    horse.dam
-                )
-            )
-        );
-        _mint(receiver, tokenId, amount, "");
+        _mint(receiver, syndicateId, amount, "");
         emit Minted(receiver, tokenId);
     }
 

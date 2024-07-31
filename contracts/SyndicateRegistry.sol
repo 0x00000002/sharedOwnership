@@ -12,7 +12,7 @@ error ManagerExists();
 error UnsupportedCurrency();
 
 event RegistrationFeePaid(address indexed payer, bytes32 indexed syndicateId, uint256 amount);
-event SharesBought(address indexed buyer, bytes32 indexed syndicateId, uint256 amount);
+event SharesBought(address indexed buyer, uint256 indexed syndicateId, uint256 amount);
 
 
 /**
@@ -53,12 +53,14 @@ contract SyndicateRegistry is AccessManaged {
         string website;
     }
 
+    uint256 private _syndicateIdCount;
+
     mapping(address shareholderAccount => Shareholder[]) public shareholders;
     mapping(address managerAccount => Manager) public managers;
-    mapping(bytes32 syndicateId => Syndicate) public syndicates;
+    mapping(uint256 syndicateId => Syndicate) public syndicates;
 
-    mapping(bytes32 syndicateId => address[]) public syndicateShareholders;
-    mapping(address addr => mapping(bytes32 syndicateId => bool))
+    mapping(uint256 syndicateId => address[]) public syndicateShareholders;
+    mapping(address addr => mapping(uint256 syndicateId => bool))
         public isShareholder;
 
     mapping(address shareholder => uint256) public sharesOwned;
@@ -88,12 +90,9 @@ contract SyndicateRegistry is AccessManaged {
         bytes32 nztrSyndicateId,
         uint256 syndtId,
         Conditions calldata conditions
-    ) external payable {
-        bytes32 syndicateId = keccak256(
-            abi.encodePacked(managerAccount, nztrSyndicateId, syndtId)
-        );
+    ) external payable returns (uint256) {
 
-        _payer.paySyndicateRegistrationFee{value: msg.value}(syndicateId);
+        _payer.paySyndicateRegistrationFee{value: msg.value}();
 
         Syndicate memory syndicate = Syndicate(
             managerAccount,
@@ -102,7 +101,8 @@ contract SyndicateRegistry is AccessManaged {
             conditions
         );
 
-        syndicates[nztrSyndicateId] = syndicate;
+        syndicates[_syndicateIdCount] = syndicate;
+        return _syndicateIdCount++;
     }
 
     function syndt() external view returns (address) {
@@ -110,7 +110,7 @@ contract SyndicateRegistry is AccessManaged {
     }
 
     function buyShares(
-        bytes32 syndicateId,
+        uint256 syndicateId,
         uint256 amount,        
         PaymentSystem.Currency currency
     ) external payable {
