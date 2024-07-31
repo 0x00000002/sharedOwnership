@@ -4,22 +4,30 @@ pragma solidity 0.8.26;
 
 import "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 
+import "./HorseToken.sol";
 import "./SYNDToken.sol";
 import "./PaymentSystem.sol";
 
 error ManagerExists();
+error UnsupportedCurrency();
+
+event RegistrationFeePaid(address indexed payer, bytes32 indexed syndicateId, uint256 amount);
+event SharesBought(address indexed buyer, bytes32 indexed syndicateId, uint256 amount);
+
 
 /**
  * @dev FutureverAn example of ERC721 contract
  */
 contract SyndicateRegistry is AccessManaged {
+    HorseToken private _ht;
     SYNDToken private _syndt;
     PaymentSystem private _payer;
 
+
     struct Syndicate {
         address managerAccount;
-        bytes32 nztrSyndicateId; // string? number?
-        uint256 syndtId; // SYNDT's ID
+        bytes32 custodianLink; // string or link or whatever
+        uint256 horseId; 
         Conditions conditions;
     }
 
@@ -32,6 +40,8 @@ contract SyndicateRegistry is AccessManaged {
 
     struct Conditions {
         uint256 totalShares;
+        uint256 sharePrice; // could be 0
+        uint256 maxSupply;
         HorseStatus status;
     }
 
@@ -51,11 +61,15 @@ contract SyndicateRegistry is AccessManaged {
     mapping(address addr => mapping(bytes32 syndicateId => bool))
         public isShareholder;
 
+    mapping(address shareholder => uint256) public sharesOwned;
+
     constructor(
+        address horseToken,
         address syndToken,
         address paymentSystem,
         address manager
     ) AccessManaged(manager) {
+        _ht = HorseToken(horseToken);
         _syndt = SYNDToken(syndToken);
         _payer = PaymentSystem(paymentSystem);
     }
@@ -94,4 +108,23 @@ contract SyndicateRegistry is AccessManaged {
     function syndt() external view returns (address) {
         return address(_syndt);
     }
+
+    function buyShares(
+        bytes32 syndicateId,
+        uint256 amount,        
+        PaymentSystem.Currency currency
+    ) external payable {
+        if (currency == PaymentSystem.Currency.XRP) {
+            _payer.paySharesNativeCurrency{value: msg.value}(syndicateId, amount);
+            emit SharesBought(msg.sender, syndicateId, amount);
+        } else {
+            revert UnsupportedCurrency();
+        }
+    }
+
+    function sellShares(bytes32 syndicateId, uint256 purchaseId) external {
+        // the one of the previous purchases will be sold
+        // _payer.sellShares(syndicateId, purchaseId);
+    }
+
 }

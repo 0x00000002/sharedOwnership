@@ -2,65 +2,22 @@
 
 pragma solidity 0.8.26;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/manager/AccessManaged.sol";
+import "./HorseToken.sol";
 
-string constant NAME = "Syndicate Token";
-string constant TOKEN = "SYNDT";
-
-enum HorseType {
-    Thoroughbred,
-    Standardbred,
-    QuarterHorse,
-    Arabian,
-    Appaloosa,
-    Paint,
-    Mustang,
-    Other
-}
-
-enum Color {
-    Bay,
-    Black,
-    Brown,
-    Chestnut,
-    Gray,
-    Roan,
-    White,
-    Other
-}
-
-enum HorseStatus {
-    Active,
-    Retired,
-    Deceased,
-    Sold,
-    Stolen,
-    Lost,
-    Other
-}
+string constant BASE_URI = "https://token-cdn-domain/{id}.json";
 
 /**
  * @dev Syndicate Token contract
  */
-contract SYNDToken is ERC721, AccessManaged {
-    struct Horse {
-        bytes32 name; // maximum 32 characters in the name
-        HorseType horseType;
-        HorseStatus status;
-        Color color;
-        uint256 dob; // date of birth, unix timestamp with hours/minutes/seconds ignored
-        bool isStallion;
-        bytes32 sire;
-        bytes32 dam;
-    }
-
-    mapping(bytes32 tokenId => Horse) public horses;
-
+contract SYNDToken is ERC1155, AccessManaged {
     event Minted(address indexed receiver, uint256 tokenId);
     event Burned(uint256 tokenId);
 
-    constructor(address manager) ERC721(NAME, TOKEN) AccessManaged(manager) {}
+    mapping(address manager => bool) private _managers;
+
+    constructor(address manager) ERC1155(BASE_URI) AccessManaged(manager) {}
 
     /**
      * @notice mint() function
@@ -70,29 +27,41 @@ contract SYNDToken is ERC721, AccessManaged {
 
     function mint(
         address receiver,
-        Horse calldata horse
-    ) public payable restricted {
-        bytes32 tokenId = keccak256(
-            abi.encodePacked(
-                horse.name,
-                horse.horseType,
-                horse.color,
-                horse.dob,
-                horse.isStallion,
-                horse.sire,
-                horse.dam
+        uint256 amount,
+        HorseToken.Horse calldata horse
+    ) public payable onlyManager returns (uint256 tokenId) {
+        tokenId = uint256(
+            keccak256(
+                abi.encodePacked(
+                    horse.name,
+                    horse.horseType,
+                    horse.color,
+                    horse.dob,
+                    horse.isStallion,
+                    horse.sire,
+                    horse.dam
+                )
             )
         );
-        _mint(receiver, uint256(tokenId));
-        emit Minted(receiver, uint256(tokenId));
+        _mint(receiver, tokenId, amount, "");
+        emit Minted(receiver, tokenId);
     }
 
     /**
      * @notice Optional burn() function - EXAMPLE for testing purpose
      * @param tokenId The token ID to burn
      */
-    function burn(uint256 tokenId) external restricted {
-        _burn(tokenId);
+    function burn(
+        address from,
+        uint256 tokenId,
+        uint256 value
+    ) external onlyManager {
+        _burn(from, tokenId, value);
         emit Burned(tokenId);
+    }
+
+    modifier onlyManager() {
+        require(_managers[msg.sender], "Restricted to managers");
+        _;
     }
 }
