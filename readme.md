@@ -2,47 +2,54 @@
 
 ## Problem statement
 
-**Some** people are interested in the benefits of having a horse but cannot afford to own one due to financial constraints, lack of experience, or time limitations.
+Numerous crowdfunding platforms exist, but they often share common issues.
 
-On a number of occasions, a part owner of a horse wants to sell their share in the horse but can’t due to not having the marketplace to do so.
+- Centralization.
+  - Platforms filter the projects they allow to participate.
+  - Users are not able to recover their funds if lenders engage in fraud.
+- Costs. There are few free crowdfunding platforms but they target non-profit organizations.
 
-There is a way to overcome some of these issues through ownership in syndicates, but it is still too complicated, requires individual ownership registration for each horse with the custodial authorities, and duplicated legal registration paperwork.
+There is no suitable solution for small businesses or startups.
 
 ## Goals
 
-Provide easy access to "shared ownership" where users can buy or sell “temporary ownership” tokens online. Their participation may be rewarded if the horse generates revenue. The ownership is confirmed in a decentralized, trustless manner.
-
-These use case options should be present in any of the contracts. The reason for this is that the ASSET producer can have an option to record their intent or purpose for the horse. As each of the periods of a young horse are known, the ASSET producer can then attribute a cost estimate for that period, which would mean that the cost of the period could be established, with the proviso that if the costs were exceeded, then the ASSET purchaser would have to provide a top up. Just means we can manage the costs through another option.
+Provide easy access to the global Web3 market and users' funds for anyone seeking to raise funds and acting trustworthy. The agreement must be reached in a decentralized, trustless manner.
 
 ## Proposed solution
 
-Blockchain backed solution for transparency and trustworthiness, with Frontend to simplify access.
-
-The blockchain part of the application will use the following terms:
-
-- Asset token to digitize the real animals.
-- Syndicate Token (ASSET), representing syndicated assets.
-- Syndicate Registry to manage the [KYCed entities](https://www.notion.so/Syndicate-Token-ASSET-875367c0c34644d4b1f810377a794304?pvs=21), syndicate rules, and conditions of syndicate membership.
-- Payment System, ensuring that rewards/ revenue is distributed to the user’s wallets.
+Set of smart contracts, for transparency and trustworthiness, with Frontend for ease of use.
 
 ## Business requirements
 
+**Dictionary:**
+
+- ASSET: A digital token that represents the owner's assets.
+- Lenders: Web3 users seeking to lend their funds in exchange for future profit.
+- Payment System: It provides payment methods, token exchanges, and auctions.
+- Collateral assets: Anything that can be sold at auction, e.g. cryptocurrency or NFTs.
+- Vault: A smart contract that holds ASSETs and their collateral for a specified lending period.
+- Expected reward: Set by the ASSET owner to be be paid at the end of the lending period.
+- SHARE token: Minted to lenders. It relates to the ASSET, ASSET's collateral, and the expected reward for the specific lending period.
+
 ### Use case
 
-It is similar to Racehorses, but instead of race horses participations, with no costs associated, users “lock in” in scheduled costs sharing in exchange for any revenue generated during the period, apart of breeding.
+Asset owners specify the funds they seek to raise, the duration they want to borrow money, and the potential reward after the lending period ends.
 
-**Money flow:**
+To assure lenders they can recoup their funds, the asset owner must deposit collateral, typically in the form of crypto tokens or NFTs.
 
-1. Syndicate owners evaluate their spending and potential revenue on a monthly or quarterly basis. These figures are set as targets.
-2. The total costs of the syndicate are distributed among the shareholders proportionally to their share ownership.
-3. Shareholders can choose to exchange a portion of the costs with anyone willing to cover those costs in exchange for future revenue. To do this, the shareholder locks the desired amount of ASSETs in the Vault, and others can add their funds (tokens) to the Vault and receive shares of that pool.
-4. When the period ends, the syndicate deposits the actual earnings from the horse into the Vault, and the ASSETs are unlocked. Users can then claim their revenue by burning their ASSET shares.
-5. Users can decide if they want to participate in that pool/syndicate basing on two parameters:
+The owner locks their asset(s) and collateral into the Vault. Now, anyone can review the collateral, the asset owner's history, and the expected reward, then decide whether to participate.
 
-   - Horse performance: historical data on the number of races won
-   - Syndicate honesty: comparison of earned rewards (external sources, e.g. horse racing results tables) versus deposited to the reward pool
+If the decision is positive, the borrower deposits their tokens or the native blockchain's currency (e.g., XRP for the Root Network or ETH for Ethereum) into the Vault and receives shares of that pool.
 
-   The horse's performance is unpredictable, making it a game element. However, the syndicate's honesty can be verified, even automated, using oracles.
+When the period ends, the asset owner deposits the reward (it might exceed the promised, but cannot be less than promised) into the Vault, and the assets (and their collateral) are unlocked. After that, lenders can claim their reward by burning their shares.
+
+The reward cannot be guaranteed. However, the collateral provides some assurance, and the asset owner history can also be reviewed.
+
+If the deposited reward is less than promised, the collateral may be sold to cover the difference.
+
+If no reward is deposited at all, the collateral will be liquidated.
+
+After the assets are unlocked, their collateral can be used for another asset or period.
 
 ### Supported currencies
 
@@ -56,7 +63,7 @@ All users must be KYC verified. Asset/share tokens cannot be transferred to the 
 
 ### Token extendibility
 
-To guarantee the completeness of information regarding the main asset of Syndicate (the horse), the token representing the animal should be "extendable" in terms of data it contains. We can use a Dynamic Metadata registry (external project, out of scope of this one) for asset tokens to ensure:
+To provide the completeness of information regarding the asset, the ASSET token must be "extendable" in terms of data it contains. We can use a Dynamic Metadata registry (external project, out of scope of this one) for asset tokens to ensure:
 
 - a fast start for this project, and
 - the ability to introduce changes in the future.
@@ -74,12 +81,12 @@ All smart contracts should have dedicated storage to ensure future logic upgrade
 Birds’ eye view, we will have 3 layers of smart contracts\*:
 
 - Tokens
-  - Asset: a token representing the ownership of the asset
-  - PART: a token of participation in costs in exchange for profit
+  - ASSET: a token representing ownership of the asset
+  - SHARE: a token of participation in costs in exchange for a reward
 - Business logic
-  - Users Registry - to manage users and issue ASSETs
-  - Vault contract - to manage user deals
-  - Collateral registry contract - to deposit/lock collateral assets
+  - Users Registry - to manage users and mint ASSETs
+  - Vault contract - to manage agreements between asset owners and lenders
+  - Collateral registry contract - to deposit (lock) collateral assets
 - Payment system
   - Payments: deposits/withdrawals
   - Auction system - to sell collateral assets for unpaid shares
@@ -93,86 +100,91 @@ Birds’ eye view, we will have 3 layers of smart contracts\*:
 
 ## Business logic
 
-### Tokens
-
-#### ASSET
-
-A token representing the ownership of the asset. ASSETs are minted to the syndicate members in proportion to their ownership of the syndicate. The actual shares are held by the KYC team, who have permission to sell them in order to fulfil the syndicate’s promises.
-
-The maintenance costs are evenly distributed among all ASSETs.
-
-- Shareholders
-  lock any amount of their ASSETs for a specific period. Tokens are automatically unlocked when the period ends AND reward is transferred from the syndicate to the Vault contract, to be claimed by Web3 users.
-
-#### PART
-
-A token that represents a share of the costs in exchange for a portion of the profits.
-The ASSETs transferred to the Vault represent the costs for a specific period. Web3 users can pay any amount towards those costs and receive tokens representing their share of the cost pool in return.
-
-When the period ends, the syndicate must transfer the share of the profit (in proportion to the ASSETs in the Vault compared to the total amount of ASSETs) to unlock the ASSETs.
-
-Web3 users can then claim the profit in the Vault, and their SHAREs for that period will be burned.
-
-- Syndicate managers
-  - Set the predicted costs of the upcoming period.
-  - Deposit (the proportion of) the syndicate’s earned profit into the Vault after the period ends.
-- Syndicate shareholders
-  - Transfer their ASSETs into the Vault for a specific period. Those ASSETs are locked until the syndicate managers deposit reward into the Vault.
-- Web3 users
-  - Deposit funds into the Vault and receive SHAREs which represent their share in the pool (Vault).
-  - Claim their rewards by burning their SHAREs after the period ends.
-
 ### Users Registry
 
-Use cases:
+A smart contract that allows to manage users and mint new ASSETs.
+
+**Use cases:**
 
 - KYC team
   - Enable user accounts after KYC verification
+- Asset owners
+  - mint new ASSETs
+
+### Asset token (ASSET)
+
+A token representing the ownership of the asset.
+
+The ASSETs deposited to the Vault represent the borrowing amount for a specific period, and the reward for the specified period.
+
+**Use cases:**
+
+- Asset owners
+  lock any amount of their ASSETs and specify the duration of lock, and expected reward. Tokens are automatically unlocked when the period ends AND reward is deposited into the Vault contract, to be claimed by lenders.
+
+### Collateral assets
+
+Tokens that deposited into the Vault as collateral for the ASSETs can be sold at auction if no reward was deposited.
+
+**Use cases:**
+
+- Asset owners
+  - Deposit collateral (XRP, ETH, ERC20, or ERC721/1155).
+  - Withdraw collateral when the lending period ended and the reward deposited.
+- Lenders
+  - initiate collateral liquidation
+
+### Asset's shares (SHARE token)
+
+A token that represents a share of the lending pool during the specific period with associated expected reward.
+
+Any Web3 users (lenders) can deposit their funds and receive SHARE tokens representing their share of the lending pool.
+
+_N.B.: The share can't be "cancelled" or withdrawn before the end of the period, but can be traded or transferred to another user._
+
+**Use cases:**
+
+- Lenders
+  - Deposit their funds into the pool and receive SHAREs of the pool.
+  - Claim the reward from the Vault, by burning their SHAREs after the period ends and the reward is deposited.
+  - Trade their shares (ERC1155) at any marketplace or transfer them to any wallet.
 
 ### Vault
 
-Syndicate shareholders can transfer their obligations to Web3 users by selling their ASSETs costs in exchange for the future profit. To do so, they use the Vault contract (Vault Contract), specifically an instance called the syndicate vault (vault).
+The vault can operate in three ways. The asset owner can choose one of themwhen starting a new lending period.
 
-The associated costs of ASSETs is a debt that the vault must repay through the sale of PART tokens.
+1. Contribution based reward
 
-The vault can function in three ways. There are three syndicate vaults existing for each period.
+   The ASSET’s owner sets the number of SHAREs to mint, and the reward per each SHARE token.
 
-1. Fixed price with variable rate.
+2. Pool-Proportioned Reward
 
-   ASSET has an associated cost. The ASSET’s owner can set the number of SHAREs to mint per one ASSET, thus specifying the price of 1 PART token.
+   The asset owner specifies the reward they are willing to pay, independent of the funds raised. The pool accepts deposits before the period starts. Once the period begins, no further deposits are accepted. The expected reward is calculated when all deposits have been made.
 
-   Different ASSETs can be sold for variable amount of SHAREs, allowing buyers to chose which ones to buy and thus regulate their participation level.
+3. Pool and time-proportioned reward
 
-   Unsold SHAREs should be repaid by the ASSET owner. Unpaid debts are processed by the Syndicate Registry contract, according to the syndicate rules (e.g. sold).
+   Users can deposit funds into the pool at any time before the period ends. However, their reward will be proportional to both the amount deposited and the remaining time.
 
-2. The syndicate set a fixed price rate.
-
-   The syndicate rules determine the number of SHAREs the ASSET can be divided into, which is managed and updated by the syndicate manager. In this case, all PART tokens of the syndicate cost the same price.
-
-3. Floating rate.
-
-   The pool's debt is represented by the ASSETs deposited into the vault's pool. Web3 users deposit their funds into the pool and receive SHAREs, which represent their share of the pool. In most cases, there will be a difference between the vault's debt and the collected funds.
-   If the collected amount exceeds the debt, the difference is distributed among the ASSET owners whose tokens are in the pool. If the collected amount is less, the ASSET owners must repay the difference
-
-   Unpaid debts are processed by the Syndicate Registry contract, according to the syndicate rules (e.g. sold).
-
-Use cases:
+**Use cases:**
 
 - The ASSET owners
-  - Deposit their ASSET(s) into one of the syndicate’s vault.
+  - Deposit their ASSET(s) into one of the pool.
 - Web3 users
-  - Deposit funds into the vault and receive a shares of the pool.
+  - Deposit funds into the pool and receive a shares of the pool.
 
-### Payment system
+### Payment processor
 
-#### General payments
+**Use cases:**
 
 - Asset owners
-  - Withdraw payments paid by Web3 users.
-  - Deposit to the Vault the reward at the end of each period.
-- Shareholders
-  - Claim their share of the reward.
+  - Withdraw lent funds.
+  - Deposit the reward into the Vault at the end of the lending period.
+- Lenders
+  - Claim reward after lending period ends.
 
 #### Auction
 
-It allows to liquidate unpaid ASSETs (by selling associated collateral and burning ASSETs).
+It allows to pay unpaid SHAREs by selling ASSET associated collateral.
+
+- Anyone
+  - can call `liquidate(collateralId)` function if the SHARE's reward was not deposited after the lending period ended.
