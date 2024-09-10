@@ -5,22 +5,24 @@ pragma solidity 0.8.26;
 import "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./SYNDToken.sol";
-
-string constant CURRENCY = "NZD";
-
 error InsufficientAmount(uint256 required, uint256 actual);
 
 /**
- * @dev Payment System contract
+ * @dev Payment System - Paayment processor contract
  */
-contract PaymentSystem is AccessManaged, ReentrancyGuard {
+contract PaymentProcessor is AccessManaged, ReentrancyGuard {
     enum Currency {
-        NZD,
-        ETH,
+        XRP,
         ROOT,
         ASTO,
-        XRP
+        SYLO
+    }
+
+    enum Fee {
+        OwnerRegistration,
+        AssetRegistration,
+        SharePurchase,
+        ShareSale
     }
     struct Payment {
         address user;
@@ -29,8 +31,7 @@ contract PaymentSystem is AccessManaged, ReentrancyGuard {
         Currency currency;
     }
 
-    uint256 private _syndicateRegistrationFee;
-    uint256 public totalFees;
+    mapping(Fee => uint256) private _totalFeesCollected;
 
     mapping(uint256 syndicateId => uint256 priceForOne) public shareCost;
     mapping(uint256 syndicateId => uint256 currentlyIssuedShares)
@@ -42,15 +43,32 @@ contract PaymentSystem is AccessManaged, ReentrancyGuard {
     mapping(address shareholder => mapping(Currency => uint256))
         public balances;
 
+    mapping(Fee => uint256) _fees;
+
+    event FeeCollected(
+        Fee indexed feeType,
+        Currency indexed currencyType,
+        uint256 value
+    );
+
     constructor(address manager) AccessManaged(manager) {}
 
-    function paySyndicateRegistrationFee() external payable {
-        uint256 value = msg.value;
-        require(
-            value >= _syndicateRegistrationFee,
-            InsufficientAmount(_syndicateRegistrationFee, value)
-        );
-        totalFees += value;
+    /**
+     * @notice Pay fee
+     * @notice currently it supports payments in native currency only
+     * @dev feeType - the type of fee to pay
+     */
+    function payFee(Currency currency, Fee feeType) external payable {
+        uint256 value;
+        uint256 fee = _fees[feeType];
+        if (currency == PaymentProcessor.Currency.XRP) {
+            value = msg.value;
+            require(value >= fee, InsufficientAmount(fee, value));
+        } else {
+            revert("Method is not supported yet");
+        }
+
+        emit FeeCollected(feeType, currency, value);
     }
 
     function paySharesNativeCurrency(
@@ -70,7 +88,14 @@ contract PaymentSystem is AccessManaged, ReentrancyGuard {
     // ! Admin functions
     // !----------------------
 
-    function setSyndicateRegistrationFee(uint256 fee) external restricted {
-        _syndicateRegistrationFee = fee;
+    function setFee(Fee fee, uint256 amount) external restricted {
+        _fees[fee] = amount;
+    }
+
+    function withdawFees(
+        address payable to,
+        uint256 amount
+    ) external restricted {
+        to.call{value: amount};
     }
 }
