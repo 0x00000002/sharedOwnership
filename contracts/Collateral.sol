@@ -28,8 +28,6 @@ contract CollateralVault is AccessManaged {
         uint256 amount;
     }
 
-    uint256 public liquidationFee;
-
     mapping(uint256 assetId => Collateral[]) collaterals;
     mapping(CollateralType => uint256 fee) public liquidationFees;
 
@@ -178,7 +176,7 @@ contract CollateralVault is AccessManaged {
         emit OtherDeposit(assetId, uint16(block.timestamp), jsonUri);
     }
 
-    function withdrawDeposit(
+    function withdrawCollateral(
         uint256 assetId,
         uint256 index,
         address to
