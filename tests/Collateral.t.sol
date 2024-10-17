@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/manager/AccessManager.sol";
 
@@ -27,6 +27,7 @@ contract CollateralTests is Test {
 
     address aManager;
     address aVault;
+    address aAsset;
 
     address owner;
     address admin;
@@ -58,9 +59,12 @@ contract CollateralTests is Test {
         owner = makeAddr("owner");
         lender = makeAddr("lender");
 
+        aAsset = makeAddr("ASSET");
+
         vm.label(admin, "ADMIN");
         vm.label(owner, "ASSET OWNER");
         vm.label(lender, "LENDER");
+        vm.label(aAsset, "ASSET");
     }
 
     // AcessManager contract must be pre-deployed
@@ -82,12 +86,13 @@ contract CollateralTests is Test {
 
     function setupCollateralVault() internal {
         vault_ = new CollateralVault(
-            aManager,
+            aAsset,
             2 * 10e6,
             4 * 10e6,
             6 * 10e6,
             8 * 10e6,
-            10 * 10e6
+            10 * 10e6,
+            aManager
         );
         aVault = address(vault_);
 
@@ -107,7 +112,7 @@ contract CollateralTests is Test {
         vm.stopPrank();
     }
 
-    function test_setLiquidationFee_restricted() public {
+    function test_setLiquidationFee_non_authorised_access() public {
         vm.prank(owner);
 
         vm.expectRevert(
@@ -129,6 +134,11 @@ contract CollateralTests is Test {
         vault_.setLiquidationFee(xrpType, 3);
         uint256 fee = vault_.liquidationFees(xrpType);
         assertEq(fee, 3);
+    }
+
+    function test_requireLiquidationFee() public {
+        vm.skip(true);
+        assertEq(true, false);
     }
 
     function test_depositXRP() public {
@@ -156,7 +166,52 @@ contract CollateralTests is Test {
         assertEq(true, false);
     }
 
-    function test_withdrawDeposited() public {
+    function test_withdraw_happy_xrp() public {
+        vm.skip(true);
+
+        // checks:
+        // - asset is not free
+        // - belongs to someone else
+        // - erc20
+        // - erc721
+        // - erc1155
+        // - xrp
+        // - other ??
+
+        assertEq(true, false);
+    }
+
+    function test_withdraw_lockedAsset() public {
+        vm.skip(true);
+        assertEq(true, false);
+    }
+
+    function test_withdraw_wrong_owner() public {
+        vm.skip(true);
+        assertEq(true, false);
+    }
+
+    function test_withdraw_happy_erc20() public {
+        vm.skip(true);
+        assertEq(true, false);
+    }
+
+    function test_withdraw_happy_erc721() public {
+        vm.skip(true);
+        assertEq(true, false);
+    }
+
+    function test_withdraw_happy_erc1155() public {
+        vm.skip(true);
+        assertEq(true, false);
+    }
+
+    function test_withdraw_happy_other() public {
+        vm.skip(true);
+        assertEq(true, false);
+    }
+
+    function test_withdraw_liquidationd_fee_refunded() public {
         vm.skip(true);
         assertEq(true, false);
     }

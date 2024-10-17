@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/manager/AccessManager.sol";
 
@@ -94,19 +94,18 @@ contract VaultTests is Test {
     }
 
     function setupVaultContract() internal {
-        vault_ = new Vault(aManager);
+        vault_ = new Vault(aAsset, aShare, aManager);
         aVault = address(vault_);
 
-        bytes4[] memory selectors = new bytes4[](1);
-        selectors[0] = vault_.addPair.selector;
+        // bytes4[] memory selectors = new bytes4[](1);
 
-        vm.startPrank(admin);
-        am_.grantRole(VAULT_ADMIN, admin, 0);
-        am_.setTargetFunctionRole(aAsset, selectors, VAULT_ADMIN);
+        // vm.startPrank(admin);
+        // am_.grantRole(VAULT_ADMIN, admin, 0);
+        // am_.setTargetFunctionRole(aAsset, selectors, VAULT_ADMIN);
 
-        (bool canCall, ) = am_.canCall(admin, aVault, vault_.addPair.selector);
-        assertTrue(canCall, "Admin is able to add new ASSET/SHAIR pair");
-        vm.stopPrank();
+        // (bool canCall, ) = am_.canCall(admin, aVault, vault_.addPair.selector);
+        // assertTrue(canCall, "Admin is able to add new ASSET/SHAIR pair");
+        // vm.stopPrank();
     }
 
     function test_addPair() public {

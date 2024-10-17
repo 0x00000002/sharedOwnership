@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/metatx/ERC2771Forwarder.sol";
+import "./Asset.sol";
 
 /**
  * @dev Asset token contract
@@ -23,14 +24,22 @@ contract CollateralVault is AccessManaged {
     struct Collateral {
         CollateralType collateralType;
         uint16 timestamp;
+        address ownerAddress;
         address contractAddress;
         uint256 assetId;
         uint256 amount;
     }
 
+    Asset private _asset;
+
     mapping(uint256 assetId => Collateral[]) collaterals;
     mapping(CollateralType => uint256 fee) public liquidationFees;
 
+    event XrpDeposited(
+        uint256 indexed assetId,
+        uint256 amount,
+        uint16 timestamp
+    );
     event ERC20Deposited(
         uint256 indexed assetId,
         address indexed contractAddress,
@@ -58,15 +67,24 @@ contract CollateralVault is AccessManaged {
 
     error FailedToSend(CollateralType collateralType, uint256 value);
     error DepositNotExist(uint256 assetId, uint256 index);
+    error AssetIsLocked();
+    error NotAnOwner();
+    error TransferFailed(
+        CollateralType collateralType,
+        address contractAddress,
+        uint256 tokenId
+    );
 
     constructor(
-        address manager,
+        address asset,
         uint256 xrpLiquidationFee,
         uint256 erc721Liquidationfee,
         uint256 erc1155LiquidationFee,
         uint256 erc20LiquidationFee,
-        uint256 otherLiquidationFee
+        uint256 otherLiquidationFee,
+        address manager
     ) AccessManaged(manager) {
+        _asset = Asset(asset);
         liquidationFees[CollateralType.XRP] = xrpLiquidationFee;
         liquidationFees[CollateralType.ERC721] = erc721Liquidationfee;
         liquidationFees[CollateralType.ERC1155] = erc1155LiquidationFee;
@@ -81,14 +99,17 @@ contract CollateralVault is AccessManaged {
     function depositXrp(
         uint256 assetId
     ) external payable requireLiquidationFee(CollateralType.XRP) {
+        uint256 amount = msg.value - liquidationFees[CollateralType.XRP];
         Collateral memory collateral = Collateral(
             CollateralType.XRP,
             uint16(block.timestamp),
+            msg.sender,
             address(0),
             0,
-            msg.value
+            amount
         );
         collaterals[assetId].push(collateral);
+        emit XrpDeposited(assetId, amount, uint16(block.timestamp));
     }
 
     function depositNft(
@@ -96,10 +117,13 @@ contract CollateralVault is AccessManaged {
         address contractAddress,
         uint256 tokenId
     ) external payable requireLiquidationFee(CollateralType.ERC721) {
+        address owner = msg.sender;
+        ERC721(contractAddress).transferFrom(owner, address(this), tokenId);
         collaterals[assetId].push(
             Collateral(
                 CollateralType.ERC721,
                 uint16(block.timestamp),
+                owner,
                 contractAddress,
                 tokenId,
                 1
@@ -119,10 +143,20 @@ contract CollateralVault is AccessManaged {
         uint256 tokenId,
         uint256 value
     ) external payable requireLiquidationFee(CollateralType.ERC1155) {
+        address owner = msg.sender;
+        ERC1155(contractAddress).safeTransferFrom(
+            owner,
+            address(this),
+            tokenId,
+            value,
+            ""
+        );
+
         collaterals[assetId].push(
             Collateral(
                 CollateralType.ERC1155,
                 uint16(block.timestamp),
+                owner,
                 contractAddress,
                 tokenId,
                 value
@@ -142,11 +176,23 @@ contract CollateralVault is AccessManaged {
         uint256 assetId,
         uint256 amount
     ) external payable requireLiquidationFee(CollateralType.ERC20) {
+        address owner = msg.sender;
+        bool success = ERC20(contractAddress).transferFrom(
+            owner,
+            address(this),
+            amount
+        );
+        require(
+            success,
+            TransferFailed(CollateralType.ERC20, contractAddress, assetId)
+        );
+
         collaterals[assetId].push(
             Collateral(
                 CollateralType.ERC20,
                 uint16(block.timestamp),
                 contractAddress,
+                owner,
                 0,
                 amount
             )
@@ -168,6 +214,7 @@ contract CollateralVault is AccessManaged {
             Collateral(
                 CollateralType.Other,
                 uint16(block.timestamp),
+                msg.sender,
                 address(0),
                 0,
                 0
@@ -176,18 +223,22 @@ contract CollateralVault is AccessManaged {
         emit OtherDeposit(assetId, uint16(block.timestamp), jsonUri);
     }
 
-    function withdrawCollateral(
-        uint256 assetId,
-        uint256 index,
-        address to
-    ) external {
+    function withdraw(uint256 assetId, uint256 index, address to) external {
+        require(_asset.isFree(assetId), AssetIsLocked());
+        require(
+            collaterals[assetId][index].ownerAddress == msg.sender,
+            NotAnOwner()
+        );
+
         Collateral[] storage _collaterals = collaterals[assetId];
         if (index >= _collaterals.length) {
             revert DepositNotExist(assetId, index);
         }
+
         Collateral memory collateral = _collaterals[index];
         uint256 value;
         CollateralType collateralType = collateral.collateralType;
+
         if (collateralType == CollateralType.XRP) {
             value = collateral.amount + liquidationFees[CollateralType.XRP];
         } else if (collateralType == CollateralType.ERC20) {

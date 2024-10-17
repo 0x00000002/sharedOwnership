@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -15,8 +15,6 @@ contract Asset is ERC721, AccessManaged {
 
     enum Status {
         Clear, // no assigned period or unpaid debts,
-        Collateraized, // tokens has collateral assigned
-        Balanced, // collateral is equal or greater than the declared value
         InProgress, // period has assigned, work in progress
         Overdue, // standard waiting period is over, waiting for the payment
         Liquidation // no payment received, collateral is in liquidation (under auction)
@@ -72,6 +70,10 @@ contract Asset is ERC721, AccessManaged {
      */
     function assetStatus(uint256 assetId) external view returns (Status) {
         return _status[assetId];
+    }
+
+    function isFree(uint256 assetId) external view returns (bool) {
+        return _status[assetId] == Status.Clear;
     }
 
     /**

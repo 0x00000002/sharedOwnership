@@ -6,7 +6,7 @@ out = "out"
 scripts = 'scripts'
 src = "contracts"
 test = "tests"
-solc-version = "0.8.26"
+solc-version = "0.8.28"
 
 # [profile.default.model_checker]
 # contracts = {'src/.sol' = [''], 'src/Accessory.sol' = ['Accessory']}

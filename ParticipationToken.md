@@ -153,15 +153,15 @@ _N.B.: The share can't be "cancelled" or withdrawn before the end of the period,
 
 The vault can operate in three ways. The asset owner can choose one of themwhen starting a new lending period.
 
-1. Contribution based reward
+1. Fixed reward pool
 
    The ASSET’s owner sets the number of SHAREs to mint, and the reward per each SHARE token.
 
-2. Pool-Proportioned Reward
+2. Volume Proportioned Reward pool
 
    The asset owner specifies the reward they are willing to pay, independent of the funds raised. The pool accepts deposits before the period starts. Once the period begins, no further deposits are accepted. The expected reward is calculated when all deposits have been made.
 
-3. Pool and time-proportioned reward
+3. Volume- and time-proportioned reward
 
    Users can deposit funds into the pool at any time before the period ends. However, their reward will be proportional to both the amount deposited and the remaining time.
 

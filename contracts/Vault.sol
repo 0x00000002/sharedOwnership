@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import "./Asset.sol";
@@ -11,19 +11,50 @@ import "./Share.sol";
  */
 contract Vault is AccessManaged {
     struct Period {
-        uint256 assetId;
-        uint256 expectedReward;
         uint32 startTime;
         uint32 endTime;
         bool isOver;
     }
 
-    mapping(address asset => address share) private _assetShares;
+    enum PoolType {
+        ContributionBased,
+        VolumeProportioned,
+        VolumeTimeProportioned
+    }
+
+    struct Pool {
+        PoolType poolType;
+        Period period;
+        uint256 assetId;
+        uint256 expectedReward;
+    }
+    // struct FixedRewardPool {
+    //     // VaultType vaultType;
+    //     Period period;
+    //     uint256 assetId;
+    //     uint256 expectedReward;
+    // }
+
+    // struct VolumeProportionedPool {
+    //     // VaultType vaultType;
+    //     Period period;
+    //     uint256 assetId;
+    //     uint256 expectedReward;
+    // }
+
+    // struct VolumeTimeProportionedPool {
+    //     Period period;
+    //     uint256 assetId;
+    //     uint256 expectedReward;
+    // }
+
+    Asset private _asset;
+    Share private _share;
+
     mapping(uint256 assetId => uint256) private _periodsCount;
     mapping(uint256 assetId => mapping(uint256 periodId => Period))
         private _periods;
 
-    event PairAdded(address indexed asset, address indexed share);
     event PeriodAdded(
         uint256 indexed assetId,
         uint256 indexed periodId,
@@ -33,28 +64,27 @@ contract Vault is AccessManaged {
     );
     event PeriodOver(uint256 indexed assetId, uint256 indexed periodId);
 
-    constructor(address manager) AccessManaged(manager) {}
-
-    function addPair(address asset, address share) external restricted {
-        _assetShares[asset] = share;
-        emit PairAdded(asset, share);
+    constructor(
+        address asset,
+        address share,
+        address manager
+    ) AccessManaged(manager) {
+        _asset = Asset(asset);
+        _share = Share(share);
     }
 
     function newPeriod(
-        address asset,
         uint256 assetId,
-        uint256 expectedReward,
         uint32 startTime,
         uint32 endTime
     ) external {
-        require(_assetShares[asset] != address(0), "Vault: unknown asset");
-        Period memory period = Period(
-            assetId,
-            expectedReward,
-            startTime,
-            endTime,
-            false
-        );
+        Period memory period = Period(startTime, endTime, false);
         _periods[assetId][_periodsCount[assetId]++] = period;
     }
+
+    function newVault(
+        uint256 assetId,
+        uint256 periodId,
+        PoolType poolType
+    ) external {}
 }
