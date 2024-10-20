@@ -14,8 +14,8 @@ contract Asset is ERC721, AccessManaged {
     uint256 private _counter;
 
     enum Status {
-        Clear, // no assigned period or unpaid debts,
-        InProgress, // period has assigned, work in progress
+        Clear, // no assigned pools or unpaid debts,
+        Locked, // Asset is in pool, period is active
         Overdue, // standard waiting period is over, waiting for the payment
         Liquidation // no payment received, collateral is in liquidation (under auction)
     }
@@ -70,6 +70,10 @@ contract Asset is ERC721, AccessManaged {
      */
     function assetStatus(uint256 assetId) external view returns (Status) {
         return _status[assetId];
+    }
+
+    function setStatus(uint256 assetId, Status status) external restricted {
+        _status[assetId] = status;
     }
 
     function isFree(uint256 assetId) external view returns (bool) {

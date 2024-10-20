@@ -11,6 +11,8 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 contract Share is ERC1155, AccessManaged {
     uint256 private _counter;
 
+    mapping(uint256 tokenId => uint256) public _assetId;
+
     constructor(address manager) ERC1155("n/a") AccessManaged(manager) {}
 
     function mint(

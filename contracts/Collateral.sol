@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/metatx/ERC2771Forwarder.sol";
 import "./Asset.sol";
 
 /**
- * @dev Asset token contract
+ * @dev Collaterals Vault contract
  */
 contract CollateralVault is AccessManaged {
     enum CollateralType {
