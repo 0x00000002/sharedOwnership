@@ -12,9 +12,18 @@ import "./Share.sol";
  * @notice with a specific reward distribution mechanism.
  * @notice At the end of the period, pool receives reward and distribute it to its contributors.
  */
-contract Vault is AccessManaged {
+contract Vaults is AccessManaged {
     Asset private _asset;
     Share private _share;
+
+    enum Status {
+        Clear, // no assigned pools or unpaid debts,
+        Locked, // Asset is in pool, period is active
+        Overdue, // standard waiting period is over, waiting for the payment
+        Liquidation // no payment received, collateral is in liquidation (under auction)
+    }
+
+    mapping(uint256 assetId => Status) private _status;
 
     enum ROIType {
         Multiplicative,
@@ -41,7 +50,7 @@ contract Vault is AccessManaged {
         // Rewards are distributed in proportion to each user's share of the total pool.
     }
 
-    enum DurationMultiplier {
+    enum TimeMultiplier {
         Upfront,
         // All deposits must be made before the reward period begins.
         // No multiplier is applied to the reward.
@@ -69,7 +78,7 @@ contract Vault is AccessManaged {
         uint256 expectedTotal;
         ROIType roi;
         DistributionScheme distribution;
-        DurationMultiplier multiplier;
+        TimeMultiplier multiplier;
     }
 
     struct Pool {
@@ -77,6 +86,12 @@ contract Vault is AccessManaged {
         uint32 startTime;
         uint32 endTime;
         Reward reward;
+    }
+
+    struct Vault {
+        uint256[] assetId;
+        uint256[] poolId;
+        uint256 shares;
     }
 
     uint256 private _poolsCount;
@@ -116,7 +131,7 @@ contract Vault is AccessManaged {
         delete _pools[poolId];
         delete _assets[assetId];
 
-        _asset.setStatus(assetId, Asset.Status.Clear);
+
     }
 
     function setPool(
@@ -153,9 +168,14 @@ contract Vault is AccessManaged {
         uint32 endTime,
         Reward memory reward
     ) private {
-        _pools[poolId] = Pool(startTime, endTime, reward);
+        _pools[poolId] = Pool({
+            owner: msg.sender,
+            startTime: startTime,
+            endTime: endTime,
+            reward: reward
+        });
         _assets[assetId] = poolId;
-        _asset.setStatus(assetId, Asset.Status.Locked);
+        // _vault.setStatus(assetId, Asset.Status.Locked);
         emit PoolSet(assetId, reward, poolId, startTime, endTime);
     }
 

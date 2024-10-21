@@ -17,6 +17,7 @@ To install Foundry: <br>
 2. restart terminal
 3. `$ foundryup`
 4. `$ cargo install --git https://github.com/gakonst/foundry --bin forge --locked`
+5. `$ forge install`
 
 more details on installation here: https://github.com/foundry-rs/foundry
 

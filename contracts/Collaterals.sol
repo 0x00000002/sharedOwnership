@@ -12,7 +12,7 @@ import "./Asset.sol";
 /**
  * @dev Collaterals Vault contract
  */
-contract CollateralVault is AccessManaged {
+contract Collaterals is AccessManaged {
     enum CollateralType {
         XRP,
         ERC20,
@@ -224,7 +224,7 @@ contract CollateralVault is AccessManaged {
     }
 
     function withdraw(uint256 assetId, uint256 index, address to) external {
-        require(_asset.isFree(assetId), AssetIsLocked());
+        // require(_vault.isFree(assetId), AssetIsLocked());
         require(
             collaterals[assetId][index].ownerAddress == msg.sender,
             NotAnOwner()
