@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/manager/AccessManager.sol";
 
-import "../contracts/Collateral.sol";
+import "../contracts/CollateralManager.sol";
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -12,7 +12,7 @@ import "forge-std/console.sol";
 bytes32 constant label = keccak256("label");
 
 uint64 constant DEFAULT_ADMIN_ROLE = 0x00;
-uint64 constant VAULT_ADMIN = 0x01;
+uint64 constant collateral_ADMIN = 0x01;
 uint64 constant USERS_REGISTRY_ADMIN = 0x02;
 
 /**
@@ -23,7 +23,7 @@ contract CollateralTests is Test {
     // and their addresses starts with `a`, e.g.: aNft or aManager
 
     AccessManager am_;
-    CollateralVault vault_;
+    CollateralManager collateral_;
 
     address aManager;
     address aVault;
@@ -47,7 +47,7 @@ contract CollateralTests is Test {
     function setUp() public {
         setupAddresses();
         setupAccessManager();
-        setupCollateralVault();
+        setupCollateralManager();
     }
 
     function setupAddresses() public {
@@ -84,8 +84,8 @@ contract CollateralTests is Test {
         assertTrue(canCall, "Admin can setup AM");
     }
 
-    function setupCollateralVault() internal {
-        vault_ = new CollateralVault(
+    function setupCollateralManager() internal {
+        collateral_ = new CollateralManager(
             aAsset,
             2 * 10e6,
             4 * 10e6,
@@ -94,19 +94,19 @@ contract CollateralTests is Test {
             10 * 10e6,
             aManager
         );
-        aVault = address(vault_);
+        aVault = address(collateral_);
 
         bytes4[] memory selectors = new bytes4[](1);
-        selectors[0] = vault_.setLiquidationFee.selector;
+        selectors[0] = collateral_.setLiquidationFee.selector;
 
         vm.startPrank(admin);
-        am_.grantRole(VAULT_ADMIN, admin, 0);
-        am_.setTargetFunctionRole(aVault, selectors, VAULT_ADMIN);
+        am_.grantRole(collateral_ADMIN, admin, 0);
+        am_.setTargetFunctionRole(aVault, selectors, collateral_ADMIN);
 
         (bool canCall, ) = am_.canCall(
             admin,
             aVault,
-            vault_.setLiquidationFee.selector
+            collateral_.setLiquidationFee.selector
         );
         assertTrue(canCall, "Admin is able to set fees");
         vm.stopPrank();
@@ -121,18 +121,18 @@ contract CollateralTests is Test {
                 owner
             )
         );
-        vault_.setLiquidationFee(CollateralVault.CollateralType.XRP, 3);
+        collateral_.setLiquidationFee(CollateralManager.CollateralType.XRP, 3);
     }
 
     function test_setLiquidationFee_happy_path() public {
         vm.skip(false);
 
         vm.prank(admin);
-        CollateralVault.CollateralType xrpType = CollateralVault
+        CollateralManager.CollateralType xrpType = CollateralManager
             .CollateralType
             .XRP;
-        vault_.setLiquidationFee(xrpType, 3);
-        uint256 fee = vault_.liquidationFees(xrpType);
+        collateral_.setLiquidationFee(xrpType, 3);
+        uint256 fee = collateral_.liquidationFees(xrpType);
         assertEq(fee, 3);
     }
 

@@ -11,7 +11,16 @@ error AssetIsNotAvailable(uint256 assetId);
  * @dev Asset token contract
  */
 contract Asset is ERC721, AccessManaged {
-    uint256 private _counter;
+    uint256 private _counter; // counter for minted tokens, starts from 1
+
+    enum Status {
+        Clear, // no assigned pools or unpaid debts,
+        Locked, // Asset is in pool, period is active
+        Overdue, // standard waiting period is over, waiting for the payment
+        Liquidation // no payment received, collateral is in liquidation (under auction)
+    }
+
+    mapping(uint256 assetId => Status) private _status;
 
     event Minted(address indexed receiver, uint256 tokenId);
     event Burned(uint256 tokenId);
@@ -32,6 +41,7 @@ contract Asset is ERC721, AccessManaged {
         address to,
         uint256 assetId
     ) public override {
+        require(_status[assetId] == Status.Clear, AssetIsNotAvailable(assetId));
         super.transferFrom(from, to, assetId);
     }
 
@@ -49,9 +59,26 @@ contract Asset is ERC721, AccessManaged {
         uint256 assetId,
         bytes memory data
     ) public override {
+        require(_status[assetId] == Status.Clear, AssetIsNotAvailable(assetId));
         super.safeTransferFrom(from, to, assetId, data);
     }
 
+    /**
+     * @notice Returns asset details
+     * @param assetId - id of asset
+     * @return asset details (owner, status)
+     */
+    function assetStatus(uint256 assetId) external view returns (Status) {
+        return _status[assetId];
+    }
+
+    function setStatus(uint256 assetId, Status status) external restricted {
+        _status[assetId] = status;
+    }
+
+    function isFree(uint256 assetId) external view returns (bool) {
+        return _status[assetId] == Status.Clear;
+    }
 
     /**
      * @notice mint() function
@@ -62,9 +89,9 @@ contract Asset is ERC721, AccessManaged {
     function mint(
         address receiver
     ) public payable restricted returns (uint256) {
-        _mint(receiver, _counter);
+        _mint(receiver, ++_counter); // starts from 1
         emit Minted(receiver, _counter);
-        return _counter++;
+        return _counter;
     }
 
     /**

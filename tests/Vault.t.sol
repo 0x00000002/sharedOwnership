@@ -5,6 +5,7 @@ pragma solidity 0.8.28;
 import "@openzeppelin/contracts/access/manager/AccessManager.sol";
 
 import "../contracts/Vault.sol";
+import "../contracts/VaultStorage.sol";
 import "../contracts/Asset.sol";
 import "../contracts/Share.sol";
 import "../contracts/UsersRegistry.sol";
@@ -26,8 +27,10 @@ contract VaultTests is Test {
     // and their addresses starts with `a`, e.g.: aNft or aManager
 
     AccessManager am_;
+    VaultStorage storage_;
     Vault vault_;
 
+    address aStorage;
     address aManager;
     address aAsset;
     address aShare;
@@ -94,7 +97,9 @@ contract VaultTests is Test {
     }
 
     function setupVaultContract() internal {
-        vault_ = new Vault(aAsset, aShare, aManager);
+        storage_ = new VaultStorage(aManager);
+        aStorage = address(storage_);
+        vault_ = new Vault(aStorage, aAsset, aShare, aManager);
         aVault = address(vault_);
 
         // bytes4[] memory selectors = new bytes4[](1);
