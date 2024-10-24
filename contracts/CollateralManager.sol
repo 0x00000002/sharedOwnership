@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/metatx/ERC2771Forwarder.sol";
 import "./Vault.sol";
+import "./VaultStorage.sol";
+import "./Liquidator.sol";
 
 /**
  * @dev Collateral management contract
@@ -26,13 +28,16 @@ contract CollateralManager is AccessManaged {
         uint16 timestamp;
         address ownerAddress;
         address contractAddress;
-        uint256 vaultId;
+        bytes32 vaultId;
         uint256 amount;
     }
 
     Vault private _vault;
+    VaultStorage private _storage;
+    Liquidator private _liquidator;
 
-    mapping(uint256 vaultId => Collateral[]) collaterals;
+    mapping(uint256 collateralId => Collateral) collateral;
+    mapping(bytes32 vaultId => Collateral[]) vaultCollateral;
     mapping(CollateralType => uint256 fee) public liquidationFees;
 
     event XrpDeposited(
@@ -66,8 +71,7 @@ contract CollateralManager is AccessManaged {
     );
 
     error FailedToSend(CollateralType collateralType, uint256 value);
-    error DepositNotExist(uint256 vaultId, uint256 index);
-    error vaultIsLocked();
+    error DepositNotExist(bytes32 vaultId, uint256 index);
     error NotAnOwner();
     error TransferFailed(
         CollateralType collateralType,
@@ -77,6 +81,8 @@ contract CollateralManager is AccessManaged {
 
     constructor(
         address vault,
+        address vaultStorage,
+        address luquidator,
         uint256 xrpLiquidationFee,
         uint256 erc721Liquidationfee,
         uint256 erc1155LiquidationFee,
@@ -85,6 +91,8 @@ contract CollateralManager is AccessManaged {
         address manager
     ) AccessManaged(manager) {
         _vault = Vault(vault);
+        _storage = VaultStorage(vaultStorage);
+        _liquidator = Liquidator(luquidator);
         liquidationFees[CollateralType.XRP] = xrpLiquidationFee;
         liquidationFees[CollateralType.ERC721] = erc721Liquidationfee;
         liquidationFees[CollateralType.ERC1155] = erc1155LiquidationFee;
@@ -97,10 +105,10 @@ contract CollateralManager is AccessManaged {
      * @param vaultId - id of the vault
      */
     function depositXrp(
-        uint256 vaultId
+        bytes32 vaultId
     ) external payable requireLiquidationFee(CollateralType.XRP) {
         uint256 amount = msg.value - liquidationFees[CollateralType.XRP];
-        Collateral memory collateral = Collateral(
+        Collateral memory _collateral = Collateral(
             CollateralType.XRP,
             uint16(block.timestamp),
             msg.sender,
@@ -108,18 +116,18 @@ contract CollateralManager is AccessManaged {
             0,
             amount
         );
-        collaterals[vaultId].push(collateral);
+        vaultCollateral[vaultId].push(_collateral);
         emit XrpDeposited(vaultId, amount, uint16(block.timestamp));
     }
 
     function depositNft(
-        uint256 vaultId,
+        bytes32 vaultId,
         address contractAddress,
         uint256 tokenId
     ) external payable requireLiquidationFee(CollateralType.ERC721) {
         address owner = msg.sender;
         ERC721(contractAddress).transferFrom(owner, address(this), tokenId);
-        collaterals[vaultId].push(
+        vaultCollateral[vaultId].push(
             Collateral(
                 CollateralType.ERC721,
                 uint16(block.timestamp),
@@ -138,7 +146,7 @@ contract CollateralManager is AccessManaged {
     }
 
     function depositSft(
-        uint256 vaultId,
+        bytes32 vaultId,
         address contractAddress,
         uint256 tokenId,
         uint256 value
@@ -152,7 +160,7 @@ contract CollateralManager is AccessManaged {
             ""
         );
 
-        collaterals[vaultId].push(
+        vaultCollateral[vaultId].push(
             Collateral(
                 CollateralType.ERC1155,
                 uint16(block.timestamp),
@@ -173,7 +181,7 @@ contract CollateralManager is AccessManaged {
 
     function depositErc20(
         address contractAddress,
-        uint256 vaultId,
+        bytes32 vaultId,
         uint256 amount
     ) external payable requireLiquidationFee(CollateralType.ERC20) {
         address owner = msg.sender;
@@ -187,7 +195,7 @@ contract CollateralManager is AccessManaged {
             TransferFailed(CollateralType.ERC20, contractAddress, vaultId)
         );
 
-        collaterals[vaultId].push(
+        vaultCollateral[vaultId].push(
             Collateral(
                 CollateralType.ERC20,
                 uint16(block.timestamp),
@@ -207,10 +215,10 @@ contract CollateralManager is AccessManaged {
 
     // TODO: think how to represent non-web3 vaults
     function depositOther(
-        uint256 vaultId,
+        bytes32 vaultId,
         bytes32 jsonUri
     ) external payable requireLiquidationFee(CollateralType.Other) {
-        collaterals[vaultId].push(
+        vaultCollateral[vaultId].push(
             Collateral(
                 CollateralType.Other,
                 uint16(block.timestamp),
@@ -223,44 +231,44 @@ contract CollateralManager is AccessManaged {
         emit OtherDeposit(vaultId, uint16(block.timestamp), jsonUri);
     }
 
-    function withdraw(uint256 vaultId, uint256 index, address to) external {
-        require(_vault.isFree(vaultId), vaultIsLocked());
+    function withdraw(bytes32 vaultId, uint256 index, address to) external {
+        _storage.requireUnlockedVault(vaultId);
         require(
-            collaterals[vaultId][index].ownerAddress == msg.sender,
+            vaultCollateral[vaultId][index].ownerAddress == msg.sender,
             NotAnOwner()
         );
 
-        Collateral[] storage _collaterals = collaterals[vaultId];
-        if (index >= _collaterals.length) {
+        Collateral[] storage _vaultCollateral = vaultCollateral[vaultId];
+        if (index >= _vaultCollateral.length) {
             revert DepositNotExist(vaultId, index);
         }
 
-        Collateral memory collateral = _collaterals[index];
+        Collateral memory _collateral = _vaultCollateral[index];
         uint256 value;
-        CollateralType collateralType = collateral.collateralType;
+        CollateralType collateralType = _collateral.collateralType;
 
         if (collateralType == CollateralType.XRP) {
-            value = collateral.amount + liquidationFees[CollateralType.XRP];
+            value = _collateral.amount + liquidationFees[CollateralType.XRP];
         } else if (collateralType == CollateralType.ERC20) {
-            ERC20(collateral.contractAddress).transferFrom(
+            ERC20(_collateral.contractAddress).transferFrom(
                 address(this),
                 to,
-                collateral.amount
+                _collateral.amount
             );
             value = liquidationFees[CollateralType.ERC20];
         } else if (collateralType == CollateralType.ERC721) {
-            ERC721(collateral.contractAddress).transferFrom(
+            ERC721(_collateral.contractAddress).transferFrom(
                 address(this),
                 to,
-                collateral.vaultId
+                _collateral.vaultId
             );
             value = liquidationFees[CollateralType.ERC721];
         } else if (collateralType == CollateralType.ERC1155) {
-            ERC1155(collateral.contractAddress).safeTransferFrom(
+            ERC1155(_collateral.contractAddress).safeTransferFrom(
                 address(this),
                 to,
-                collateral.vaultId,
-                collateral.amount,
+                _collateral.vaultId,
+                _collateral.amount,
                 ""
             );
             value = liquidationFees[CollateralType.ERC1155];
@@ -271,8 +279,8 @@ contract CollateralManager is AccessManaged {
 
         // the "Other" type is not withdrawable at this stage.
 
-        _collaterals[index] = _collaterals[_collaterals.length - 1];
-        _collaterals.pop();
+        _vaultCollateral[index] = _vaultCollateral[_vaultCollateral.length - 1];
+        _vaultCollateral.pop();
     }
 
     /**
@@ -282,12 +290,41 @@ contract CollateralManager is AccessManaged {
      * @notice so anyone can call this function, without paying the gas.
      * @param vaultId - id of the vault which collateral to liquidate
      */
-    function liquidateCollateral(uint256 vaultId) external {
-        Collateral[] storage _collaterals = collaterals[vaultId];
-        for (uint256 i = 0; i < _collaterals.length; i++) {
-            Collateral memory collateral = _collaterals[i];
+    function liquidateCollateral(bytes32 vaultId) external {
+        Collateral[] storage _vaultCollateral = vaultCollateral[vaultId];
+        for (uint256 i = 0; i < _vaultCollateral.length; i++) {
+            Collateral memory _collateral = _vaultCollateral[i];
 
-            // send collaterals to the liquidator
+            // send vaultCollateral to the liquidator
+            if (_collateral.collateralType == CollateralType.XRP) {
+                bool sent = _liquidator.liquidateXRP{value: _collateral.amount}(
+                    vaultId,
+                    i
+                );
+                require(
+                    sent,
+                    FailedToSend(_collateral.collateralType, _collateral.amount)
+                );
+            } else if (_collateral.collateralType == CollateralType.ERC20) {
+                ERC20(_collateral.contractAddress).transfer(
+                    msg.sender,
+                    _collateral.amount
+                );
+            } else if (_collateral.collateralType == CollateralType.ERC721) {
+                ERC721(_collateral.contractAddress).transferFrom(
+                    address(this),
+                    msg.sender,
+                    _collateral.vaultId
+                );
+            } else if (_collateral.collateralType == CollateralType.ERC1155) {
+                ERC1155(_collateral.contractAddress).safeTransferFrom(
+                    address(this),
+                    msg.sender,
+                    _collateral.vaultId,
+                    _collateral.amount,
+                    ""
+                );
+            }
         }
     }
 

@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
 /**
  * @dev Share token contract
+ * @dev This contract is responsible for managing shares
+ * @dev Shares are minted when a user `participate()` native tokens to the pool
  */
 contract Share is ERC1155, AccessManaged {
     mapping(uint256 tokenId => uint256) public _assetId;

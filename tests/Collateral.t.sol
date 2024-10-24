@@ -5,6 +5,11 @@ pragma solidity 0.8.28;
 import "@openzeppelin/contracts/access/manager/AccessManager.sol";
 
 import "../contracts/CollateralManager.sol";
+import "../contracts/Liquidator.sol";
+import "../contracts/Vault.sol";
+import "../contracts/VaultStorage.sol";
+import "../contracts/Asset.sol";
+import "../contracts/Share.sol";
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -23,11 +28,18 @@ contract CollateralTests is Test {
     // and their addresses starts with `a`, e.g.: aNft or aManager
 
     AccessManager am_;
+    Asset asset;
+    VaultStorage storage_;
     CollateralManager collateral_;
+    Vault vault_;
+    Liquidator liquidator_;
 
     address aManager;
-    address aVault;
     address aAsset;
+    address aShare;
+    address aStorage;
+    address aVault;
+    address aLiquidator;
 
     address owner;
     address admin;
@@ -85,8 +97,18 @@ contract CollateralTests is Test {
     }
 
     function setupCollateralManager() internal {
+        asset = new Asset(aManager);
+        aAsset = address(asset);
+        storage_ = new VaultStorage(aManager);
+        aStorage = address(storage_);
+        vault_ = new Vault(aStorage, aAsset, aShare, aManager);
+        aVault = address(vault_);
+        liquidator_ = new Liquidator(aManager, aVault);
+        aLiquidator = address(liquidator_);
         collateral_ = new CollateralManager(
             aAsset,
+            aStorage,
+            aLiquidator,
             2 * 10e6,
             4 * 10e6,
             6 * 10e6,
